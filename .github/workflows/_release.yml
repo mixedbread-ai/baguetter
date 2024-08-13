@@ -1,0 +1,190 @@
+name: release
+run-name: Release ${{ inputs.working-directory }} by @${{ github.actor }}
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        required: true
+        type: string
+        description: "From which folder this pipeline executes"
+  workflow_dispatch:
+    inputs:
+      working-directory:
+        required: true
+        type: string
+        description: "From which folder this pipeline executes"
+        default: "baguetter"
+
+env:
+  UV_VERSION: "0.1.0"
+  PYTHON_VERSION: "3.10"
+
+jobs:
+  lint:
+    uses: ./.github/workflows/_lint.yml
+    with:
+      working-directory: ${{ inputs.working-directory }}
+
+  test:
+    uses: ./.github/workflows/_test.yml
+    with:
+      working-directory: ${{ inputs.working-directory }}
+
+  build:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+
+    outputs:
+      pkg-name: ${{ steps.check-version.outputs.pkg-name }}
+      version: ${{ steps.check-version.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python and uv
+        uses: "./.github/actions/uv_setup"
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          uv-version: ${{ env.UV_VERSION }}
+          working-directory: ${{ inputs.working-directory }}
+          cache-key: release
+
+      - name: Build project for distribution
+        run: uv pip build
+        working-directory: ${{ inputs.working-directory }}
+
+      - name: Upload build
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: ${{ inputs.working-directory }}/dist/
+
+      - name: Check Version
+        id: check-version
+        shell: bash
+        working-directory: ${{ inputs.working-directory }}
+        run: |
+          echo pkg-name="$(grep -m1 'name =' pyproject.toml | cut -d '"' -f2)" >> $GITHUB_OUTPUT
+          echo version="$(grep -m1 'version =' pyproject.toml | cut -d '"' -f2)" >> $GITHUB_OUTPUT
+
+  test-pypi-publish:
+    needs: [build]
+    uses: ./.github/workflows/_test_release.yml
+    with:
+      working-directory: ${{ inputs.working-directory }}
+    secrets: inherit
+
+  pre-release-checks:
+    needs: [build, test-pypi-publish]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python and uv
+        uses: "./.github/actions/uv_setup"
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          uv-version: ${{ env.UV_VERSION }}
+          working-directory: ${{ inputs.working-directory }}
+
+      - name: Import published package
+        shell: bash
+        working-directory: ${{ inputs.working-directory }}
+        env:
+          PKG_NAME: ${{ needs.build.outputs.pkg-name }}
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          uv pip install \
+            --extra-index-url https://test.pypi.org/simple/ \
+            "$PKG_NAME==$VERSION" || \
+          ( \
+            sleep 5 && \
+            uv pip install \
+              --extra-index-url https://test.pypi.org/simple/ \
+              "$PKG_NAME==$VERSION" \
+          )
+
+          IMPORT_NAME="$(echo "$PKG_NAME" | sed s/-/_/g)"
+          python -c "import $IMPORT_NAME; print(dir($IMPORT_NAME))"
+
+      - name: Install test dependencies
+        run: make dev-install
+        working-directory: ${{ inputs.working-directory }}
+
+      - name: Import published package (again)
+        working-directory: ${{ inputs.working-directory }}
+        shell: bash
+        env:
+          PKG_NAME: ${{ needs.build.outputs.pkg-name }}
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          uv pip install \
+            --extra-index-url https://test.pypi.org/simple/ \
+            "$PKG_NAME==$VERSION"
+
+      - name: Run tests
+        run: make test
+        working-directory: ${{ inputs.working-directory }}
+
+  publish:
+    needs: [build, test-pypi-publish, pre-release-checks]
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python and uv
+        uses: "./.github/actions/uv_setup"
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          uv-version: ${{ env.UV_VERSION }}
+          working-directory: ${{ inputs.working-directory }}
+          cache-key: release
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: ${{ inputs.working-directory }}/dist/
+
+      - name: Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: ${{ inputs.working-directory }}/dist/
+          verbose: true
+          print-hash: true
+
+  mark-release:
+    needs: [build, test-pypi-publish, pre-release-checks, publish]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python and uv
+        uses: "./.github/actions/uv_setup"
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          uv-version: ${{ env.UV_VERSION }}
+          working-directory: ${{ inputs.working-directory }}
+          cache-key: release
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: ${{ inputs.working-directory }}/dist/
+
+      - name: Create Release
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: "${{ inputs.working-directory }}/dist/*"
+          token: ${{ secrets.GITHUB_TOKEN }}
+          draft: false
+          generateReleaseNotes: true
+          tag: ${{ inputs.working-directory }}/v${{ needs.build.outputs.version }}
+          commit: main

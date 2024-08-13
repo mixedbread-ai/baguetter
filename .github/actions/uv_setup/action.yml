@@ -1,0 +1,51 @@
+name: uv-setup
+description: Set up Python and uv with caching support
+
+inputs:
+  python-version:
+    description: Python version to use (MAJOR.MINOR)
+    required: true
+  uv-version:
+    description: uv version to install
+    required: true
+  cache-key:
+    description: Additional cache key for dependencies
+    required: true
+  working-directory:
+    description: Directory containing pyproject.toml file
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Python ${{ inputs.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Cache uv installation
+      uses: actions/cache@v4
+      with:
+        path: ~/.local/bin
+        key: uv-${{ runner.os }}-${{ inputs.python-version }}-${{ inputs.uv-version }}
+
+    - name: Install uv
+      if: steps.cache-uv.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+    - name: Cache dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/uv
+          ${{ inputs.working-directory }}/.venv
+        key: ${{ runner.os }}-uv-${{ inputs.python-version }}-${{ inputs.uv-version }}-${{ inputs.cache-key }}-${{ hashFiles(format('{0}/pyproject.toml', inputs.working-directory)) }}
+
+    - name: Install dependencies
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        make dev-install

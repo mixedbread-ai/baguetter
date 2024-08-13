@@ -1,0 +1,26 @@
+name: pytest
+
+on: [push]
+
+env:
+  UV_VERSION: "0.1.0"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python and uv
+        uses: "./.github/actions/uv_setup"
+        with:
+          python-version: ${{ matrix.python-version }}
+          uv-version: ${{ env.UV_VERSION }}
+          working-directory: "."
+          cache-key: test
+      - name: Install dependencies and run tests
+        run: |
+          make dev-install
+          make test
