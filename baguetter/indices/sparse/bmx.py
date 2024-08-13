@@ -14,8 +14,6 @@ class BMXSparseIndex(BaseSparseIndex):
     for indexing and searching documents.
     """
 
-    NAME_PREFIX: str = "bmx_"
-
     def normalize_scores(self, n_tokens: int, scores: ndarray) -> ndarray:
         """Normalize BMX scores by the number of tokens in the query.
 

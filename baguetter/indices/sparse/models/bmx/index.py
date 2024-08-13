@@ -218,31 +218,31 @@ def build_index(
     )
 
     # [doc_count x n_terms]
-    df_matrix = vectorizer.fit_transform(
+    dt_matrix = vectorizer.fit_transform(
         tqdm(
             corpus_tokens,
             total=n_docs,
             disable=not show_progress,
-            desc="Building TDF matrix",
+            desc="Building doc-term matrix",
             dynamic_ncols=True,
             mininterval=0.5,
         ),
     )
 
     # [n_terms x doc_count]
-    df_matrix = df_matrix.transpose().tocsr()
+    dt_matrix = dt_matrix.transpose().tocsr()
 
     unique_tokens = vectorizer.get_feature_names_out()
     unique_token_ids = np.arange(len(unique_tokens))
 
     inverted_index = convert_df_matrix_into_inverted_index(
-        df_matrix=df_matrix,
+        df_matrix=dt_matrix,
         unique_token_ids=unique_token_ids,
         n_docs=n_docs,
         int_dtype=int_dtype,
         show_progress=show_progress,
     )
-    doc_lens = np.squeeze(np.asarray(df_matrix.sum(axis=0), dtype=dtype))
+    doc_lens = np.squeeze(np.asarray(dt_matrix.sum(axis=0), dtype=dtype))
     avg_doc_len = float(np.mean(doc_lens))
     relative_doc_lens = doc_lens / avg_doc_len
 

@@ -11,7 +11,6 @@ from baguetter.indices.base import SearchResults
 from baguetter.indices.dense.base import BaseDenseIndex
 from baguetter.indices.dense.config import FaissDenseIndexConfig
 from baguetter.logger import LOGGER
-from baguetter.utils.common import batch_iter
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -27,8 +26,6 @@ def _support_nprobe(index: Any) -> bool:
 
 class FaissDenseIndex(BaseDenseIndex):
     """A dense index implementation using Faiss."""
-
-    NAME_PREFIX = "faiss_"
 
     def __init__(
         self,
@@ -96,9 +93,9 @@ class FaissDenseIndex(BaseDenseIndex):
 
     def _save(
         self,
+        path: str,
         repository: AbstractFileRepository,
-        path: str | None = None,
-    ) -> None:
+    ) -> str:
         """Save the index state and data."""
         state = {
             "key_mapping": self.key_mapping,
@@ -116,11 +113,12 @@ class FaissDenseIndex(BaseDenseIndex):
         with repository.open(index_file_path, "wb") as file:
             index = faiss.serialize_index(self.faiss_index)
             np.savez_compressed(file, index=index)
+        return path
 
     @classmethod
     def _load(
         cls,
-        name_or_path: str,
+        path: str,
         *,
         repository: AbstractFileRepository,
         mmap: bool = False,
@@ -128,7 +126,7 @@ class FaissDenseIndex(BaseDenseIndex):
         """Load the index from saved state.
 
         Args:
-            name_or_path (str): Name or path of the index to load.
+            path (str): Name or path of the index to load.
             repository (AbstractFileRepository): File repository to use for loading.
             mmap (bool): Whether to use memory mapping. Defaults to False.
 
@@ -138,7 +136,7 @@ class FaissDenseIndex(BaseDenseIndex):
         Raises:
             FileNotFoundError: If the index files are not found in the repository.
         """
-        state_file_path, index_file_path = BaseDenseIndex.build_index_file_paths(name_or_path)
+        state_file_path, index_file_path = BaseDenseIndex.build_index_file_paths(path)
 
         if not repository.exists(state_file_path):
             msg = f"Index.state {state_file_path} not found in repository."
@@ -233,14 +231,13 @@ class FaissDenseIndex(BaseDenseIndex):
         """
         if not queries:
             return []
-
         if isinstance(queries[0], str):
             queries = self._embed(queries, is_query=True, show_progress=show_progress)
-
         if _support_nprobe(self.faiss_index) and n_probe is not None:
             self.faiss_index.nprobe = n_probe
 
-        faiss.omp_set_num_threads(n_workers or self.n_workers)
+        n_workers = n_workers if n_workers is not None else self.n_workers
+        faiss.omp_set_num_threads(n_workers)
 
         query_vectors = np.array(queries, dtype=np.float32)
 
