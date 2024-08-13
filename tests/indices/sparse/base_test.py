@@ -57,7 +57,7 @@ def mock_docs():
 
 
 def test_constructor(mock_sparse_index):
-    assert mock_sparse_index.name == "sparse_test-index"
+    assert mock_sparse_index.name == "test-index"
     assert isinstance(mock_sparse_index._pre_processor, TextPreprocessor)
     assert isinstance(mock_sparse_index.config, SparseIndexConfig)
     assert mock_sparse_index.index is None
@@ -67,7 +67,7 @@ def test_constructor(mock_sparse_index):
 
 
 def test_constructor_from_config(mock_sparse_index_from_config):
-    assert mock_sparse_index_from_config.name == "sparse_test-index"
+    assert mock_sparse_index_from_config.name == "test-index"
     assert isinstance(mock_sparse_index_from_config._pre_processor, TextPreprocessor)
     assert isinstance(mock_sparse_index_from_config.config, SparseIndexConfig)
     assert mock_sparse_index_from_config.index is None

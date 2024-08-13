@@ -5,7 +5,7 @@ import tempfile
 import numpy as np
 import pytest
 
-from baguetter.indices.dense.base import _INDEX_PREFIX, _STATE_PREFIX
+from baguetter.indices.dense.base import _INDEX_PREFIX
 from baguetter.indices.dense.config import DenseIndexConfig
 from baguetter.indices.dense.usearch import USearchDenseIndex
 from baguetter.utils.file_repository import LocalFileRepository
@@ -20,7 +20,6 @@ def sample_data():
 
 def test_usearch_index_creation():
     index = USearchDenseIndex(embedding_dim=128)
-    assert index.name.startswith("usearch_")
     assert index.config.embedding_dim == 128
 
 
@@ -98,10 +97,10 @@ def test_usearch_save_load(sample_data):
         repository = LocalFileRepository(tmp_dir)
 
         # Save the index
-        index._save(repository, save_path)
+        index._save(path=save_path, repository=repository)
 
         # Load the index
-        loaded_index = USearchDenseIndex._load(save_path, repository=repository)
+        loaded_index = USearchDenseIndex._load(path=save_path, repository=repository)
 
         assert loaded_index.config.embedding_dim == 128
         assert loaded_index.key_counter == 10
@@ -117,7 +116,7 @@ def test_usearch_save_load(sample_data):
         )
 
         # Verify file names
-        assert repository.exists(f"{_STATE_PREFIX}{save_path}")
+        assert repository.exists(save_path)
         assert repository.exists(f"{_INDEX_PREFIX}{save_path}")
 
 

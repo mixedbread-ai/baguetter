@@ -142,7 +142,7 @@ class USearchDenseIndex(BaseDenseIndex, Index):
         self,
         path: str,
         repository: AbstractFileRepository,
-    ) -> None:
+    ) -> str:
         """Save the index state and data.
 
         Args:
@@ -171,7 +171,7 @@ class USearchDenseIndex(BaseDenseIndex, Index):
             Index.save(self, temp_file.name)
             file.write(temp_file.read())
 
-        return path
+        return state_file_path
 
     @classmethod
     def _load(

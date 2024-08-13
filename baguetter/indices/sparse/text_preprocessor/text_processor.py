@@ -239,7 +239,7 @@ class TextPreprocessor:
         Returns:
             Generator[list[str], None, None] | list[list[str]]: Processed text items as lists of tokens.
         """
-        if n_workers <= 1:
+        if n_workers <= 0:
             processor = map(self._call_steps, items)
         else:
             processor = map_in_process(

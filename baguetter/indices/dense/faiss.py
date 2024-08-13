@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, Any
 
 import faiss
 import numpy as np
-from tqdm import tqdm
 
 from baguetter.indices.base import SearchResults
 from baguetter.indices.dense.base import BaseDenseIndex
@@ -113,7 +112,7 @@ class FaissDenseIndex(BaseDenseIndex):
         with repository.open(index_file_path, "wb") as file:
             index = faiss.serialize_index(self.faiss_index)
             np.savez_compressed(file, index=index)
-        return path
+        return state_file_path
 
     @classmethod
     def _load(

@@ -10,8 +10,8 @@ import dataclasses
 from collections import defaultdict
 from typing import TYPE_CHECKING
 
-import numpy as np
 import numba as nb
+import numpy as np
 from numpy import ndarray
 
 from baguetter.utils.common import tqdm

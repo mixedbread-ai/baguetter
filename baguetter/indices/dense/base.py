@@ -12,7 +12,6 @@ if TYPE_CHECKING:
 
     import numpy as np
 
-_STATE_PREFIX = "state_"
 _INDEX_PREFIX = "index_"
 
 
@@ -70,11 +69,10 @@ class BaseDenseIndex(BaseIndex, abc.ABC):
 
         """
         path = Path(path)
-        state_file_name = f"{_STATE_PREFIX}{path.name}"
         index_file_name = f"{_INDEX_PREFIX}{path.name}"
 
         dir_name = path.parent if path.parent != Path() else Path()
-        state_file_path = dir_name / state_file_name
+        state_file_path = dir_name / path.name
         index_file_path = dir_name / index_file_name
 
         return str(state_file_path), str(index_file_path)

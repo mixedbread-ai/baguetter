@@ -53,7 +53,7 @@ class Persistable(ABC):
         """Save the object to a local file repository.
 
         Args:
-            path (str, optional): Path to save the object to.
+            path (str): Path to save the object to.
 
         Returns:
             str: Path to the saved object.
