@@ -155,3 +155,5 @@ dmypy.json
 uv.lock
 
 res/
+
+playground.ipynb

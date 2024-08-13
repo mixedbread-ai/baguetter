@@ -64,7 +64,9 @@ class FaissDenseIndex(BaseDenseIndex):
         )
 
         if embed_fn is not None and embedding_dim is None:
-            embedding_dim = embed_fn([". "], is_query=False, show_progress=False).shape[1]
+            embedding_dim = embed_fn([". "], is_query=False, show_progress=False).shape[
+                1
+            ]
 
         if embedding_dim is None:
             msg = "embedding_dim must be provided if embed_fn is not None."
@@ -79,7 +81,9 @@ class FaissDenseIndex(BaseDenseIndex):
             normalize_score=normalize_score,
         )
         self.key_mapping: dict[int, Key] = {}
-        self.faiss_index = faiss.index_factory(self.config.embedding_dim, self.config.faiss_string)
+        self.faiss_index = faiss.index_factory(
+            self.config.embedding_dim, self.config.faiss_string
+        )
 
         if self.require_training() and train_samples:
             self.train(train_samples)
@@ -138,7 +142,9 @@ class FaissDenseIndex(BaseDenseIndex):
         Raises:
             FileNotFoundError: If the index files are not found in the repository.
         """
-        state_file_path, index_file_path = BaseDenseIndex.build_index_file_paths(name_or_path)
+        state_file_path, index_file_path = BaseDenseIndex.build_index_file_paths(
+            name_or_path
+        )
 
         if not repository.exists(state_file_path):
             msg = f"Index.state {state_file_path} not found in repository."
@@ -163,9 +169,13 @@ class FaissDenseIndex(BaseDenseIndex):
 
     def require_training(self) -> bool:
         """Check if the index requires training."""
-        return hasattr(self.faiss_index, "is_trained") and not self.faiss_index.is_trained
+        return (
+            hasattr(self.faiss_index, "is_trained") and not self.faiss_index.is_trained
+        )
 
-    def train(self, values: list[TextOrVector], *, show_progress: bool = False, **kwargs):
+    def train(
+        self, values: list[TextOrVector], *, show_progress: bool = False, **kwargs
+    ):
         """Train the index.
 
         Args:
@@ -246,10 +256,19 @@ class FaissDenseIndex(BaseDenseIndex):
 
         scores, indices = self.faiss_index.search(query_vectors, top_k)
 
+        # Metric types https://github.com/facebookresearch/faiss/blob/main/faiss/MetricType.h
+        if self.faiss_index.metric_type != 0:  # IF not METRIC_INNER_PRODUCT
+            scores = 1 / (1 + scores)
         return [
             SearchResults(
                 keys=[self.key_mapping[idx] for idx in query_indices if idx != -1],
-                scores=np.array([score for idx, score in zip(query_indices, query_scores) if idx != -1]),
+                scores=np.array(
+                    [
+                        score
+                        for idx, score in zip(query_indices, query_scores)
+                        if idx != -1
+                    ]
+                ),
                 normalized=self.config.normalize_score,
             )
             for query_scores, query_indices in zip(scores, indices)
@@ -267,7 +286,13 @@ class FaissDenseIndex(BaseDenseIndex):
         """
         return self.add_many([key], [value])
 
-    def add_many(self, keys: list[Key], values: list[TextOrVector], *, show_progress: bool = False) -> FaissDenseIndex:
+    def add_many(
+        self,
+        keys: list[Key],
+        values: list[TextOrVector],
+        *,
+        show_progress: bool = False,
+    ) -> FaissDenseIndex:
         """Add multiple items to the index.
 
         Args:
@@ -320,13 +345,17 @@ class FaissDenseIndex(BaseDenseIndex):
             FaissDenseIndex: The index instance for method chaining.
         """
         inv_key_mapping = {v: k for k, v in self.key_mapping.items()}
-        indices_to_remove = [inv_key_mapping[key] for key in keys if key in inv_key_mapping]
+        indices_to_remove = [
+            inv_key_mapping[key] for key in keys if key in inv_key_mapping
+        ]
 
         if not indices_to_remove:
             return self
 
         self.faiss_index.remove_ids(np.array(indices_to_remove, dtype=np.int64))
 
-        remaining_keys = [v for k, v in self.key_mapping.items() if k not in indices_to_remove]
+        remaining_keys = [
+            v for k, v in self.key_mapping.items() if k not in indices_to_remove
+        ]
         self.key_mapping = dict(enumerate(remaining_keys))
         return self

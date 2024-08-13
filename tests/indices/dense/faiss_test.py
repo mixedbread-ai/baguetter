@@ -1,3 +1,4 @@
+from operator import index
 import tempfile
 
 import numpy as np
@@ -57,7 +58,9 @@ def test_faiss_duplicate_keys(sample_data):
     # Try to add duplicate keys with new values
     new_values = all_values[5:10]
     index.add_many(keys, new_values)
-    assert index.size == 5  # Size should remain the same as duplicate keys are overwritten
+    assert (
+        index.size == 5
+    )  # Size should remain the same as duplicate keys are overwritten
 
     # Verify that new values are searchable
     for key, new_value in zip(keys, new_values):
@@ -162,42 +165,42 @@ def test_faiss_add_with_text_input():
 
 def test_faiss_initialization_options():
     # Test different initialization options for FaissDenseIndex
-    
+
     # Test Flat index (default)
     flat_index = FaissDenseIndex(embedding_dim=128)
     assert flat_index.config.faiss_string == "Flat"
-    
+
     # Test IVF index
     ivf_index = FaissDenseIndex(embedding_dim=128, faiss_string="IVF50,Flat")
     assert ivf_index.config.faiss_string == "IVF50,Flat"
-    
+
     # Test IVFPQ index
     ivfpq_index = FaissDenseIndex(embedding_dim=128, faiss_string="IVF50,PQ8x8")
     assert ivfpq_index.config.faiss_string == "IVF50,PQ8x8"
-    
+
     # Test PQ index
     pq_index = FaissDenseIndex(embedding_dim=128, faiss_string="PQ16x8")
     assert pq_index.config.faiss_string == "PQ16x8"
-    
+
     # Test HNSW index
     hnsw_index = FaissDenseIndex(embedding_dim=128, faiss_string="HNSW32")
     assert hnsw_index.config.faiss_string == "HNSW32"
-    
+
     # Test LSH index
     lsh_index = FaissDenseIndex(embedding_dim=128, faiss_string="LSH")
     assert lsh_index.config.faiss_string == "LSH"
-    
+
     # Test if indices are properly initialized and can perform basic operations
     keys = [f"key_{i}" for i in range(300)]
     values = [np.random.rand(128).astype(np.float32) for _ in range(300)]
-    
+
     for index in [flat_index, ivf_index, ivfpq_index, pq_index, hnsw_index, lsh_index]:
         if index.require_training():
             index.train(values)
-        
+
         index.add_many(keys, values)
         assert index.size == 300
-        
+
         query = np.random.rand(128).astype(np.float32)
         results = index.search(query, top_k=5)
         assert len(results.keys) == 5
@@ -209,3 +212,33 @@ def test_faiss_invalid_initialization():
     with pytest.raises(RuntimeError):
         FaissDenseIndex(embedding_dim=128, faiss_string="InvalidString")
 
+
+def test_l2_metric(sample_data):
+    index = FaissDenseIndex(embedding_dim=128)
+    query_vector = sample_data[1][0]
+
+    index.add_many(sample_data[0][1:], sample_data[1][1:])
+    results = index.search(query_vector)
+
+    l2_distances = (
+        np.linalg.norm(np.array(sample_data[1][1:]) - query_vector, axis=1)
+    ) ** 2
+    l2_distances = 1 / (1 + l2_distances)
+    l2_distances = np.sort(-l2_distances)
+
+    np.testing.assert_allclose(results.scores, -l2_distances, atol=1e-5)
+
+
+def test_inner_product_metric(sample_data):
+    index = FaissDenseIndex(embedding_dim=128)
+    index.faiss_index.metric_type = 0  # Inner product
+
+    query_vector = sample_data[1][0]
+
+    index.add_many(sample_data[0][1:], sample_data[1][1:])
+    results = index.search(query_vector)
+
+    inner_products = np.dot(sample_data[1][1:], query_vector)
+    inner_products = np.sort(-inner_products)
+
+    np.testing.assert_allclose(results.scores, -inner_products, atol=1e-5)
