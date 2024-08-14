@@ -17,7 +17,7 @@ class Persistable(ABC):
     @abstractmethod
     def _load(
         cls,
-        name_or_path: str,
+        path: str,
         repository: AbstractFileRepository,
         *,
         allow_pickle: bool = True,
@@ -26,7 +26,7 @@ class Persistable(ABC):
         """Load an object from storage.
 
         Args:
-            name_or_path (str): Name or path of the object to load.
+            path (str): Path of the object to load.
             repository (AbstractFileRepository): File repository to load from.
             allow_pickle (bool, optional): Whether to allow loading pickled objects. Defaults to True.
             mmap (bool, optional): Whether to memory-map the file. Defaults to False.
@@ -37,34 +37,41 @@ class Persistable(ABC):
         """
 
     @abstractmethod
-    def _save(self, repository: AbstractFileRepository, path: str | None) -> None:
+    def _save(self, path: str, repository: AbstractFileRepository) -> str:
         """Save the object to storage.
 
         Args:
+            path (str): Path to save the object to.
             repository (AbstractFileRepository): File repository to save to.
-            path (str | None): Path to save the object to.
+
+        Returns:
+            str: Path to the saved object.
 
         """
 
-    def save(self, path: str | None = None) -> None:
+    def save(self, path: str) -> str:
         """Save the object to a local file repository.
 
         Args:
-            path (str, optional): Path to save the object to.
+            path (str): Path to save the object to.
+
+        Returns:
+            str: Path to the saved object.
 
         """
         repository = LocalFileRepository()
-        if path:
-            directory = path.rsplit("/", 1)[0]
-            repository.mkdirs(directory, exist_ok=True)
-        self._save(repository=repository, path=path)
+        directory = path.rsplit("/", 1)
+        if len(directory) > 1:
+            repository.mkdirs(directory[0], exist_ok=True)
+        path = self._save(path=path, repository=repository)
+        return repository.info(path)["name"]
 
     @classmethod
-    def load(cls, name_or_path: str, *, mmap: bool = False) -> Any:
+    def load(cls, path: str, *, mmap: bool = False) -> Any:
         """Load an object from a local file repository.
 
         Args:
-            name_or_path (str): Name or path of the object to load.
+            path (str): Path of the object to load.
             mmap (bool, optional): Whether to memory-map the file. Defaults to False.
 
         Returns:
@@ -73,7 +80,7 @@ class Persistable(ABC):
         """
         repository = LocalFileRepository()
         return cls._load(
-            name_or_path=name_or_path,
+            path=path,
             repository=repository,
             mmap=mmap,
         )
@@ -90,7 +97,7 @@ class HuggingFacePersistable(Persistable, ABC):
     def load_from_hub(
         cls,
         repo_id: str,
-        name_or_path: str,
+        path: str,
         *,
         repo_type: str | None = None,
         token: str | None = None,
@@ -101,7 +108,7 @@ class HuggingFacePersistable(Persistable, ABC):
 
         Args:
             repo_id (str): Repository ID.
-            name_or_path (str): Name or path of the object.
+            path (str): Path of the object.
             repo_type (str, optional): Repository type. Defaults to None.
             token (str, optional): Hugging Face API token. Defaults to None.
             mmap (bool, optional): Whether to memory-map the file. Defaults to False.
@@ -119,27 +126,30 @@ class HuggingFacePersistable(Persistable, ABC):
             **kwargs,
         )
 
-        return cls._load(name_or_path, repository, mmap=mmap)
+        return cls._load(path=path, repository=repository, mmap=mmap)
 
     def push_to_hub(
         self,
         repo_id: str,
+        path: str,
         *,
-        path_in_repo: str | None = None,
         private: bool = True,
         repo_type: str | None = None,
         token: str | None = None,
         **kwargs,
-    ) -> None:
+    ) -> str:
         """Save an object to the Hugging Face Hub.
 
         Args:
             repo_id (str): Repository ID.
-            path_in_repo (str, optional): Custom path within the repository. Defaults to None.
+            path (str): Path of the object.
             private (bool, optional): Whether the repository is private. Defaults to True.
             repo_type (str, optional): Repository type. Defaults to None.
             token (str, optional): Hugging Face API token. Defaults to None.
             **kwargs: Additional arguments for HuggingFaceFileRepository.
+
+        Returns:
+            str: Path to the saved object.
 
         """
         repository = HuggingFaceFileRepository(
@@ -151,4 +161,5 @@ class HuggingFacePersistable(Persistable, ABC):
             **kwargs,
         )
 
-        self._save(repository, path_in_repo)
+        path = self._save(path=path, repository=repository)
+        return repository.info(path)["name"]

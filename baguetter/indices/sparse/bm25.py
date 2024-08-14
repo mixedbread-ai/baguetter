@@ -27,8 +27,6 @@ class BM25SparseIndex(BaseSparseIndex):
     for indexing and searching documents.
     """
 
-    NAME_PREFIX: str = "bm25_"
-
     def normalize_scores(self, n_tokens: int, scores: ndarray) -> ndarray:
         """Normalize BM25 scores by the number of tokens in the query.
 

@@ -51,8 +51,6 @@ class USearchDenseIndex(BaseDenseIndex, Index):
     providing methods for adding, searching, and managing dense vector data.
     """
 
-    NAME_PREFIX = "usearch_"
-
     def __init__(
         self,
         index_name: str = "new-index",
@@ -142,14 +140,14 @@ class USearchDenseIndex(BaseDenseIndex, Index):
 
     def _save(
         self,
+        path: str,
         repository: AbstractFileRepository,
-        path: str | None = None,
-    ) -> None:
+    ) -> str:
         """Save the index state and data.
 
         Args:
+            path (str): Path to save the index. If None, uses the index name.
             repository (AbstractFileRepository): File repository to use for saving.
-            path (Optional[str]): Path to save the index. If None, uses the index name.
 
         """
         state = {
@@ -173,10 +171,12 @@ class USearchDenseIndex(BaseDenseIndex, Index):
             Index.save(self, temp_file.name)
             file.write(temp_file.read())
 
+        return state_file_path
+
     @classmethod
     def _load(
         cls,
-        name_or_path: str,
+        path: str,
         *,
         repository: AbstractFileRepository,
         mmap: bool = False,
@@ -184,7 +184,7 @@ class USearchDenseIndex(BaseDenseIndex, Index):
         """Load the index from saved state.
 
         Args:
-            name_or_path (str): Name or path of the index to load.
+            path (str): Name or path of the index to load.
             repository (AbstractFileRepository): File repository to use for loading.
             mmap (bool): Whether to use memory mapping. Defaults to False.
 
@@ -198,7 +198,7 @@ class USearchDenseIndex(BaseDenseIndex, Index):
         (
             state_file_path,
             index_file_path,
-        ) = BaseDenseIndex.build_index_file_paths(name_or_path)
+        ) = BaseDenseIndex.build_index_file_paths(path)
 
         if not repository.exists(state_file_path):
             msg = f"Index.state {state_file_path} not found in repository."
@@ -303,11 +303,13 @@ class USearchDenseIndex(BaseDenseIndex, Index):
         if not isinstance(queries, np.ndarray):
             queries = np.array(queries)
 
+        n_workers = n_workers if n_workers is not None else self.n_workers
+
         results = Index.search(
             self,
             vectors=queries,
             count=top_k,
-            threads=n_workers or self.n_workers,
+            threads=n_workers,
             log=show_progress,
             radius=radius,
             exact=self.config.exact_search if exact_search is None else exact_search,

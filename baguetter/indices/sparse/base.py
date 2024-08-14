@@ -25,8 +25,6 @@ if TYPE_CHECKING:
 class BaseSparseIndex(BaseIndex, abc.ABC):
     """Base class for sparse indices. This class should not be used directly."""
 
-    NAME_PREFIX: str = "sparse_"
-
     def __init__(
         self,
         index_name: str = "new-index",
@@ -91,7 +89,7 @@ class BaseSparseIndex(BaseIndex, abc.ABC):
         self.index: object | None = None
         self.key_mapping: dict[int, str] = {}
         self.corpus_tokens: dict[str, list[str]] = {}
-        self.n_workers: int = n_workers or max(1, (os.cpu_count() or 1) - 1)
+        self.n_workers: int = n_workers if n_workers is not None else max(1, (os.cpu_count() or 1) - 1)
 
     @abc.abstractmethod
     def normalize_scores(self, n_tokens: int, scores: ndarray) -> ndarray:
@@ -149,7 +147,7 @@ class BaseSparseIndex(BaseIndex, abc.ABC):
             str: The name of the index
 
         """
-        return f"{self.NAME_PREFIX}{self.config.index_name}"
+        return self.config.index_name
 
     @property
     def vocabulary(self) -> dict[str, int]:
@@ -163,14 +161,14 @@ class BaseSparseIndex(BaseIndex, abc.ABC):
 
     def _save(
         self,
+        path: str,
         repository: AbstractFileRepository,
-        path: str | None = None,
-    ) -> None:
+    ) -> str:
         """Save the index to the given path.
 
         Args:
+            path (str): Path to save the index to.
             repository (AbstractFileRepository): File repository to save to.
-            path (str | None): Path to save the index to.
 
         """
         state = {
@@ -179,22 +177,22 @@ class BaseSparseIndex(BaseIndex, abc.ABC):
             "corpus_tokens": self.corpus_tokens,
             "config": dataclasses.asdict(self.config),
         }
-        path = path or self.name
         with repository.open(path, "wb") as f:
             np.savez_compressed(f, state=state)
+        return path
 
     @classmethod
     def _load(
         cls,
-        name_or_path: str,
-        *,
+        path: str,
         repository: AbstractFileRepository,
+        *,
         mmap: bool = False,
     ) -> BaseSparseIndex:
         """Load an index from the given path or name.
 
         Args:
-            name_or_path (str): Name or path of the index.
+            path (str): Name or path of the index.
             repository (AbstractFileRepository): File repository to load from.
             mmap (bool): Whether to memory-map the file.
 
@@ -205,12 +203,12 @@ class BaseSparseIndex(BaseIndex, abc.ABC):
             FileNotFoundError: If the index file is not found.
 
         """
-        if not repository.exists(name_or_path):
-            msg = f"Index {name_or_path} not found."
+        if not repository.exists(path):
+            msg = f"Index {path} not found."
             raise FileNotFoundError(msg)
 
         mmap_mode = "r" if mmap else None
-        with repository.open(name_or_path, "rb") as f:
+        with repository.open(path, "rb") as f:
             stored = np.load(f, allow_pickle=True, mmap_mode=mmap_mode)
             state = stored["state"][()]
             retriever = cls.from_config(SparseIndexConfig(**state["config"]))
@@ -474,8 +472,9 @@ class BaseSparseIndex(BaseIndex, abc.ABC):
         if not queries:
             return []
 
-        n_workers = n_workers or self.n_workers
+        n_workers = n_workers if n_workers is not None else self.n_workers
         k_search = partial(self.search, top_k=top_k)
+
         results = tqdm(
             map_in_thread(
                 k_search,

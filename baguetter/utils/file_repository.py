@@ -103,7 +103,7 @@ class LocalFileRepository(AbstractFileRepository, LocalFileSystem):
 
         """
         super().__init__(**kwargs)
-        self._base_path = str(Path(path or settings.base_path).resolve())
+        self._base_path = str(Path(path or f"{settings.base_path}/repository").resolve())
         if not self.isdir(self._base_path):
             if self.exists(self._base_path):
                 msg = f"Path '{self._base_path}' exists but is not a directory."
