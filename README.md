@@ -108,13 +108,13 @@ Please check out the respective repositories and show some appreciation to the a
 ## Citing
 
 ```
-@misc{li2024bmxentropyweightedsimilaritysemanticenhanced,
-      title={BMX: Entropy-weighted Similarity and Semantic-enhanced Lexical Search}, 
+@article{li2024bmx,
+      title={BMX: Entropy-weighted Similarity and Semantic-enhanced Lexical Search},
       author={Xianming Li and Julius Lipp and Aamir Shakir and Rui Huang and Jing Li},
       year={2024},
       eprint={2408.06643},
       archivePrefix={arXiv},
       primaryClass={cs.IR},
-      url={https://arxiv.org/abs/2408.06643}, 
+      url={https://arxiv.org/abs/2408.06643},
 }
 ```
