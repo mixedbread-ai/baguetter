@@ -1,6 +1,6 @@
 [project]
 name = "baguetter"
-version = "0.1.0"
+version = "0.1.1"
 description = "Baguetter is a flexible and efficient search engine library implemented in Python. It supports sparse (traditional), dense (semantic), and hybrid retrieval methods."
 authors = [
     { name = "Mixedbread", email = "support@mixedbread.ai" },
