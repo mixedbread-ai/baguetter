@@ -99,7 +99,7 @@ Baguetter builds upon the work of several open-source projects:
 2. [bm25s](https://github.com/xhluca/bm25s) by [xhluca](https://github.com/xhluca):
    Our BM25 implementation is based on this project, which provides an efficient and effective implementation of the BM25 algorithm with different scoring functions.
 
-3. [USearch](https://github.com/unum-cloud/usearch) by [unum-cloud](https://github.com/unum-cloud) for dense retrival.
+3. [USearch](https://github.com/unum-cloud/usearch) by [unum-cloud](https://github.com/unum-cloud) for dense retrieval.
 
 4. [ranx](https://github.com/AmenRa/ranx) by [AmenRa](https://github.com/AmenRa) for evaluation.
 
