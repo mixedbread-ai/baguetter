@@ -6,7 +6,7 @@ Baguetter is a flexible, efficient, and hackable search engine library implement
 
 **Note:** Baguetter is not built for production use-cases or scale. For such use-cases, please check out other search engine projects.
 
-- Paper: https://arxiv.org/abs/2408.06643
+Paper: https://arxiv.org/abs/2408.06643
 
 ## Features
 
@@ -119,4 +119,3 @@ Please check out the respective repositories and show some appreciation to the a
       url={https://arxiv.org/abs/2408.06643},
 }
 ```
-...

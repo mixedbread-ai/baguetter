@@ -5,7 +5,7 @@ Baguetter是一个Python实现的灵活、高效、可定制的搜索引擎库�
 
 **注意：** Baguetter并非为生产环境或大规模使用而设计。如需此类使用场景，请查看其他搜索引擎项目。
 
-- BMX论文: https://arxiv.org/abs/2408.06643
+BMX论文: https://arxiv.org/abs/2408.06643
 
 ## 功能特点
 
@@ -118,4 +118,3 @@ Baguetter 基于几个开源项目的工作：
       url={https://arxiv.org/abs/2408.06643},
 }
 ```
-...
