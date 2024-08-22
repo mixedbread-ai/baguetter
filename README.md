@@ -6,6 +6,8 @@ Baguetter is a flexible, efficient, and hackable search engine library implement
 
 **Note:** Baguetter is not built for production use-cases or scale. For such use-cases, please check out other search engine projects.
 
+- Paper: https://arxiv.org/abs/2408.06643
+
 ## Features
 
 - Sparse retrieval using BM25 and BMX algorithms
@@ -99,12 +101,22 @@ Baguetter builds upon the work of several open-source projects:
 2. [bm25s](https://github.com/xhluca/bm25s) by [xhluca](https://github.com/xhluca):
    Our BM25 implementation is based on this project, which provides an efficient and effective implementation of the BM25 algorithm with different scoring functions.
 
-3. [USearch](https://github.com/unum-cloud/usearch) by [unum-cloud](https://github.com/unum-cloud) and [Faiss](https://github.com/facebookresearch/faiss) by [facebook research](https://github.com/facebookresearch) for dense retrival.
+3. [USearch](https://github.com/unum-cloud/usearch) by [unum-cloud](https://github.com/unum-cloud) and [Faiss](https://github.com/facebookresearch/faiss) by [facebook research](https://github.com/facebookresearch) for dense retrieval.
 
 4. [ranx](https://github.com/AmenRa/ranx) by [AmenRa](https://github.com/AmenRa) for evaluation.
 
 Please check out the respective repositories and show some appreciation to the authors.
 
-## Citing & Authors
-
+## Citing
+```
+@article{li2024bmx,
+      title={BMX: Entropy-weighted Similarity and Semantic-enhanced Lexical Search},
+      author={Xianming Li and Julius Lipp and Aamir Shakir and Rui Huang and Jing Li},
+      year={2024},
+      eprint={2408.06643},
+      archivePrefix={arXiv},
+      primaryClass={cs.IR},
+      url={https://arxiv.org/abs/2408.06643},
+}
+```
 ...
