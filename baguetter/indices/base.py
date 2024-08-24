@@ -114,7 +114,9 @@ class BaseIndex(HuggingFacePersistable, abc.ABC, Generic[T]):
         """
 
     @abc.abstractmethod
-    def search_many(self, queries: list[T], *, top_k: int = 100, **kwargs) -> list[SearchResults]:
+    def search_many(
+        self, queries: list[T], *, top_k: int = 100, show_progress: bool = False, **kwargs
+    ) -> list[SearchResults]:
         """Search for multiple queries.
 
         Args:

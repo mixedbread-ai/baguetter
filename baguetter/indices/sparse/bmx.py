@@ -25,6 +25,9 @@ class BMXSparseIndex(BaseSparseIndex):
             ndarray: The normalized BMX scores.
 
         """
+        if n_tokens == 0:
+            return scores
+
         corpus_size = len(self.corpus_tokens)
         normalization_factor = n_tokens * np.log(1 + (corpus_size - 0.5) / 1.5)
         return scores / normalization_factor

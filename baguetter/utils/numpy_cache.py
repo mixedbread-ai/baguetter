@@ -32,12 +32,12 @@ class NumpyCache:
         """
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
-        self.hash_func = hash_func or self._default_hash_key
+        self.hash_func = hash_func or self._default_hash_fn
         self.use_mmap = use_mmap
         self.memory_cache: dict[str, np.ndarray] = {}
 
     @staticmethod
-    def _default_hash_key(key: Any) -> str:
+    def _default_hash_fn(key: Any) -> str:
         """Default hash function using SHA-512."""
         return hashlib.sha512(str(key).encode()).hexdigest()
 
@@ -85,6 +85,7 @@ class NumpyCache:
 def numpy_cache(
     cache_dir: str | Path = f"{settings.cache_dir}/numpy_cache",
     *,
+    cache_postfix: str | None = None,
     hash_func: Callable[[Any], str] | None = None,
     use_mmap: bool = False,
 ) -> Callable[[Callable[..., np.ndarray]], Callable[..., np.ndarray]]:
@@ -99,6 +100,8 @@ def numpy_cache(
         A decorator function.
 
     """
+    if cache_postfix:
+        cache_dir = f"{cache_dir}/{cache_postfix}"
     cache = NumpyCache(cache_dir=cache_dir, hash_func=hash_func, use_mmap=use_mmap)
 
     def decorator(func: Callable[..., np.ndarray]) -> Callable[..., np.ndarray]:

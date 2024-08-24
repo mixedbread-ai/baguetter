@@ -8,15 +8,8 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable, Literal
 
-import numpy as np
 import ranx
 from openpyxl import Workbook
-from sentence_transformers import SentenceTransformer
-from sentence_transformers.quantization import quantize_embeddings
-
-from baguetter.indices import USearchDenseIndex
-from baguetter.utils.common import ensure_dir_exists
-from baguetter.utils.numpy_cache import numpy_cache
 
 if TYPE_CHECKING:
     from baguetter.evaluation.datasets.base import BaseDataset
@@ -303,7 +296,7 @@ def evaluate_retrievers(
             runs.append(run)
             timings[retriever_name] = timing
         report = ranx.compare(qrels, runs, metrics, make_comparable=True)
-        print("\nReport (rounded):")
+        print(f"\nReport for {dataset.name} (rounded):")
         print("---------------------------------------------------------------")
         print(f"{report}")
         results.add(dataset.name, EvalResult(qrels, runs, report, timings))
