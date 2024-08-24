@@ -4,14 +4,14 @@ import os
 from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING, Any
 
+from tqdm import tqdm
+
 from baguetter.fuser.config import FuserConfig
 from baguetter.fuser.fuser import Fuser
 from baguetter.indices.base import BaseIndex, SearchResults
 from baguetter.types import HybridValue, Key
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
-
     from baguetter.utils.file_repository import AbstractFileRepository
 
 
@@ -24,7 +24,7 @@ class MultiIndex(BaseIndex[HybridValue]):
 
     def __init__(
         self,
-        indices: Iterable[BaseIndex] | None = None,
+        indices: dict[str, BaseIndex] | None = None,
         *,
         fuser_config: FuserConfig | None = None,
         n_workers: int | None = None,
@@ -32,7 +32,7 @@ class MultiIndex(BaseIndex[HybridValue]):
         """Initialize a MultiIndex instance.
 
         Args:
-            indices (Optional[Iterable[BaseIndex]]): Iterable of BaseIndex instances to be used.
+            indices (Optional[dict[str, BaseIndex]]): Dictionary of BaseIndex instances to be used.
             fuser_config (Optional[FuserConfig]): Configuration for the Fuser. Defaults to FuserConfig().
             n_workers (Optional[int]): Number of threads to use for parallel processing.
                                        Defaults to the number of CPUs.
@@ -40,7 +40,7 @@ class MultiIndex(BaseIndex[HybridValue]):
         """
         fuser_config = fuser_config or FuserConfig()
 
-        self.indices: dict[str, BaseIndex] = {index.name: index for index in indices or []}
+        self.indices: dict[str, BaseIndex] = indices or {}
         self.fuser: Fuser = Fuser.from_config(fuser_config)
         self.n_workers: int = n_workers or os.cpu_count() or 1
 
@@ -54,30 +54,31 @@ class MultiIndex(BaseIndex[HybridValue]):
         """
         return str(list(self.indices.keys()))
 
-    def add_index(self, index: BaseIndex) -> MultiIndex:
+    def add_index(self, key: str, index: BaseIndex) -> MultiIndex:
         """Add a new BaseIndex to the hybrid index.
 
         Args:
+            key (str): The key for the index to be added.
             index (BaseIndex): The index to be added.
 
         Returns:
             MultiIndex: The updated MultiIndex instance.
 
         """
-        self.indices[index.name] = index
+        self.indices[key] = index
         return self
 
-    def remove_index(self, name: str) -> MultiIndex:
+    def remove_index(self, key: str) -> MultiIndex:
         """Remove a BaseIndex from the hybrid index.
 
         Args:
-            name (str): The name of the index to be removed.
+            key (str): The key of the index to be removed.
 
         Returns:
             MultiIndex: The updated MultiIndex instance.
 
         """
-        self.indices.pop(name, None)
+        self.indices.pop(key, None)
         return self
 
     def add(self, key: Key, value: HybridValue) -> MultiIndex:
@@ -95,19 +96,25 @@ class MultiIndex(BaseIndex[HybridValue]):
             list(executor.map(lambda idx: idx.add(key, value), self.indices.values()))
         return self
 
-    def add_many(self, keys: list[Key], values: list[HybridValue]) -> MultiIndex:
+    def add_many(self, keys: list[Key], values: list[HybridValue], *, show_progress: bool = False) -> MultiIndex:
         """Add multiple items to all indices.
 
         Args:
             keys (List[Key]): The keys for the new items.
             values (List[HybridValue]): The values to be added.
+            show_progress (bool): Whether to show progress.
 
         Returns:
             MultiIndex: The updated MultiIndex instance.
 
         """
         with ThreadPoolExecutor(max_workers=self.n_workers) as executor:
-            list(executor.map(lambda idx: idx.add_many(keys, values), self.indices.values()))
+            list(
+                executor.map(
+                    lambda idx: idx.add_many(keys, values, show_progress=show_progress),
+                    self.indices.values(),
+                )
+            )
         return self
 
     def remove(self, key: Key) -> MultiIndex:
@@ -124,18 +131,18 @@ class MultiIndex(BaseIndex[HybridValue]):
             list(executor.map(lambda idx: idx.remove(key), self.indices.values()))
         return self
 
-    def remove_many(self, keys: list[Key]) -> MultiIndex:
+    def remove_many(self, keys: list[Key], **kwargs) -> MultiIndex:
         """Remove multiple items from all indices.
 
         Args:
             keys (List[Key]): The keys of the items to be removed.
-
+            **kwargs: Additional arguments to pass to the remove_many method.
         Returns:
             MultiIndex: The updated MultiIndex instance.
 
         """
         with ThreadPoolExecutor(max_workers=self.n_workers) as executor:
-            list(executor.map(lambda idx: idx.remove_many(keys), self.indices.values()))
+            list(executor.map(lambda idx: idx.remove_many(keys, **kwargs), self.indices.values()))
         return self
 
     def _validate_query(self, query: str | dict[str, Any]) -> None:
@@ -180,13 +187,13 @@ class MultiIndex(BaseIndex[HybridValue]):
         """
         self._validate_query(query)
         if isinstance(query, str):
-            query = {index.name: query for index in self.indices.values()}
+            query = {key: query for key in self.indices}
 
         with ThreadPoolExecutor(max_workers=self.n_workers) as executor:
             results = list(
                 executor.map(
-                    lambda idx: idx.search(query=query[idx.name], top_k=top_k, **kwargs),
-                    self.indices.values(),
+                    lambda key: self.indices[key].search(query=query[key], top_k=top_k, **kwargs),
+                    self.indices.keys(),
                 )
             )
         return self.fuser.merge(results)
@@ -196,6 +203,7 @@ class MultiIndex(BaseIndex[HybridValue]):
         queries: list[str | dict[str, HybridValue]],
         *,
         top_k: int = 100,
+        show_progress: bool = False,
         **kwargs,
     ) -> list[SearchResults]:
         """Compute results for multiple queries across all indices.
@@ -204,6 +212,7 @@ class MultiIndex(BaseIndex[HybridValue]):
             queries (List[Union[str, Dict[str, HybridValue]]]): List of queries to search for.
                 Each query can be a string or a dictionary.
             top_k (int): Number of results to return per query. Defaults to 100.
+            show_progress (bool): Whether to show progress.
             **kwargs: Additional search parameters.
 
         Returns:
@@ -215,9 +224,14 @@ class MultiIndex(BaseIndex[HybridValue]):
 
         with ThreadPoolExecutor(max_workers=self.n_workers) as executor:
             return list(
-                executor.map(
-                    lambda query: self.search(query, top_k=top_k, **kwargs),
-                    queries,
+                tqdm(
+                    executor.map(
+                        lambda query: self.search(query, top_k=top_k, **kwargs),
+                        queries,
+                    ),
+                    total=len(queries),
+                    desc="Searching queries",
+                    disable=not show_progress,
                 )
             )
 

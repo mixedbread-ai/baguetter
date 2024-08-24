@@ -41,6 +41,9 @@ class BM25SparseIndex(BaseSparseIndex):
             ValueError: If the normalization method is not supported.
 
         """
+        if n_tokens == 0:
+            return scores
+
         try:
             normalization_func = NORMALIZATION_METHODS[self.config.method]
         except KeyError as e:

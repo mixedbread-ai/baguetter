@@ -27,7 +27,7 @@ class BaseSparseIndex(BaseIndex, abc.ABC):
 
     def __init__(
         self,
-        index_name: str = "new-index",
+        index_name: str = "new-sparse",
         *,
         min_df: float = 1,
         b: float = 0.75,

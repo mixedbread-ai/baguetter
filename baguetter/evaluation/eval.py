@@ -11,7 +11,6 @@ from typing import TYPE_CHECKING, Callable, Literal
 import ranx
 from openpyxl import Workbook
 
-
 if TYPE_CHECKING:
     from baguetter.evaluation.datasets.base import BaseDataset
     from baguetter.indices.base import BaseIndex
@@ -297,7 +296,7 @@ def evaluate_retrievers(
             runs.append(run)
             timings[retriever_name] = timing
         report = ranx.compare(qrels, runs, metrics, make_comparable=True)
-        print("\nReport (rounded):")
+        print(f"\nReport for {dataset.name} (rounded):")
         print("---------------------------------------------------------------")
         print(f"{report}")
         results.add(dataset.name, EvalResult(qrels, runs, report, timings))

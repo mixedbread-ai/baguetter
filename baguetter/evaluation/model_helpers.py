@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
@@ -20,6 +20,7 @@ def create_embed_fn(
     *,
     query_prompt: str | None = None,
     document_prompt: str | None = None,
+    truncation_dim: int | None = None,
     use_caching: bool = True,
     batch_size: int = 32,
 ):
@@ -30,12 +31,12 @@ def create_embed_fn(
             text = [f"{query_prompt}{query}" for query in text]
         elif document_prompt:
             text = [f"{document_prompt}{document}" for document in text]
-        return embedding_model.encode_text(text, batch_size=batch_size, show_progress=show_progress).embeddings
+        return embedding_model.encode(text, batch_size=batch_size, show_progress=show_progress).embeddings
 
     if use_caching:
-        embed_fn = numpy_cache()(embed_fn)
+        embed_fn = numpy_cache(cache_postfix=embedding_model.name_or_path)(embed_fn)
 
-    def enocde_fn(
+    def encode_fn(
         text: list[str],
         *,
         is_query: bool = False,
@@ -43,9 +44,49 @@ def create_embed_fn(
         encoding_format: EncodingFormat = EncodingFormat.FLOAT,
     ):
         embeddings = embed_fn(text=text, is_query=is_query, show_progress=show_progress)
+        if truncation_dim:
+            embeddings = embeddings[:, :truncation_dim]
+
         return quantize_embeddings(embeddings, encoding_format=encoding_format)
 
-    return enocde_fn
+    return encode_fn
+
+
+def create_embed_fn_st(
+    embedding_model,
+    *,
+    query_prompt: str | None = None,
+    document_prompt: str | None = None,
+    truncation_dim: int | None = None,
+    use_caching: bool = True,
+    batch_size: int = 32,
+):
+    from sentence_transformers.quantization import quantize_embeddings
+
+    def embed_fn(text: list[str], *, is_query: bool = False, show_progress: bool = False):
+        if is_query and query_prompt:
+            text = [f"{query_prompt}{query}" for query in text]
+        elif document_prompt:
+            text = [f"{document_prompt}{document}" for document in text]
+        return embedding_model.encode(text, batch_size=batch_size, show_progress_bar=show_progress)
+
+    if use_caching:
+        embed_fn = numpy_cache()(embed_fn)
+
+    def encode_fn(
+        text: list[str],
+        *,
+        is_query: bool = False,
+        show_progress: bool = False,
+        precision: Literal["float32", "int8", "uint8", "binary", "ubinary"] = "float32",
+    ):
+        embeddings = embed_fn(text=text, is_query=is_query, show_progress=show_progress)
+        if truncation_dim:
+            embeddings = embeddings[:, :truncation_dim]
+
+        return quantize_embeddings(embeddings, precision=precision)
+
+    return encode_fn
 
 
 def create_post_processing_fn(reranking_model: CrossEncoder, batch_size: int = 32):
