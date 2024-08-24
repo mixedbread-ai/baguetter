@@ -1,22 +1,15 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import Literal
 
 import numpy as np
 
 from baguetter.indices.search_engine import EnhancedSearchResults
-from baguetter.utils.common import ensure_import
 from baguetter.utils.numpy_cache import numpy_cache
-
-with ensure_import("ofen"):
-    from ofen.enums import EncodingFormat
-
-if TYPE_CHECKING:
-    from ofen.models import CrossEncoder, TextEncoder
 
 
 def create_embed_fn(
-    embedding_model: TextEncoder,
+    embedding_model,
     *,
     query_prompt: str | None = None,
     document_prompt: str | None = None,
@@ -25,6 +18,7 @@ def create_embed_fn(
     batch_size: int = 32,
 ):
     from ofen.common.tensor_utils import quantize_embeddings
+    from ofen.enums import EncodingFormat
 
     def embed_fn(text: list[str], *, is_query: bool = False, show_progress: bool = False):
         if is_query and query_prompt:
@@ -71,7 +65,7 @@ def create_embed_fn_st(
         return embedding_model.encode(text, batch_size=batch_size, show_progress_bar=show_progress)
 
     if use_caching:
-        embed_fn = numpy_cache()(embed_fn)
+        embed_fn = numpy_cache(cache_postfix=embedding_model._first_module().auto_model.name_or_path)(embed_fn)
 
     def encode_fn(
         text: list[str],
@@ -89,7 +83,7 @@ def create_embed_fn_st(
     return encode_fn
 
 
-def create_post_processing_fn(reranking_model: CrossEncoder, batch_size: int = 32):
+def create_post_processing_fn(reranking_model, batch_size: int = 32):
     def post_process_fn(results: list[EnhancedSearchResults], *, show_progress: bool = False):
         if len(results) == 0:
             return []
