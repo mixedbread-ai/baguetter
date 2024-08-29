@@ -93,6 +93,7 @@ def numpy_cache(
 
     Args:
         cache_dir: Directory to store cached NumPy arrays.
+        cache_postfix: Optional postfix to append to the cache directory.
         hash_func: Custom hash function for keys. Defaults to SHA-512.
         use_mmap: Whether to use memory-mapping when loading arrays.
 

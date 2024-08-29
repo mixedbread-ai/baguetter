@@ -57,6 +57,10 @@ class MultiIndex(BaseIndex[HybridValue]):
     def add_index(self, key: str, index: BaseIndex) -> MultiIndex:
         """Add a new BaseIndex to the hybrid index.
 
+        Warning:
+            This method should only be used during initialization, not on the fly.
+            Indices added later will not have access to data added before their inclusion.
+
         Args:
             key (str): The key for the index to be added.
             index (BaseIndex): The index to be added.
