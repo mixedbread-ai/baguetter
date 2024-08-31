@@ -27,10 +27,16 @@ pip install baguetter
 ## 快速入门
 
 ```python
-from baguetter.indices import BMXSparseIndex
+from typing import List
+from baguetter.indices import BMXSparseIndex, TextPreprocessorConfig
+
+# 自定义中文 tokenizer
+def cjk_tokenizer(text: str) -> List[str]:
+    return list(text.replace(" ", ""))
 
 # 创建索引
-idx = BMXSparseIndex()
+idx = BMXSparseIndex(preprocessor_or_config=TextPreprocessorConfig(
+   custom_tokenizer=cjk_tokenizer))
 
 # 添加文档
 docs = [
