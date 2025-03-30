@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from dataclasses import asdict
 from typing import TYPE_CHECKING, Any
 
@@ -15,7 +16,6 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from baguetter.types import DTypeLike, Key, ScoringMetric, TextOrVector
-    from baguetter.utils.file_repository import AbstractFileRepository
 
 
 def _support_nprobe(index: Any) -> bool:
@@ -93,7 +93,6 @@ class FaissDenseIndex(BaseDenseIndex):
     def _save(
         self,
         path: str,
-        repository: AbstractFileRepository,
     ) -> str:
         """Save the index state and data."""
         state = {
@@ -106,10 +105,10 @@ class FaissDenseIndex(BaseDenseIndex):
             index_file_path,
         ) = BaseDenseIndex.build_index_file_paths(path or self.name)
 
-        with repository.open(state_file_path, "wb") as file:
+        with open(state_file_path, "wb") as file:
             np.savez_compressed(file, state=state)
 
-        with repository.open(index_file_path, "wb") as file:
+        with open(index_file_path, "wb") as file:
             index = faiss.serialize_index(self.faiss_index)
             np.savez_compressed(file, index=index)
         return state_file_path
@@ -119,7 +118,6 @@ class FaissDenseIndex(BaseDenseIndex):
         cls,
         path: str,
         *,
-        repository: AbstractFileRepository,
         mmap: bool = False,
     ) -> FaissDenseIndex:
         """Load the index from saved state.
@@ -137,22 +135,22 @@ class FaissDenseIndex(BaseDenseIndex):
         """
         state_file_path, index_file_path = BaseDenseIndex.build_index_file_paths(path)
 
-        if not repository.exists(state_file_path):
+        if not os.path.exists(state_file_path):
             msg = f"Index.state {state_file_path} not found in repository."
             raise FileNotFoundError(msg)
 
-        if not repository.exists(index_file_path):
+        if not os.path.exists(index_file_path):
             msg = f"Index.index {index_file_path} not found in repository."
             raise FileNotFoundError(msg)
 
-        with repository.open(state_file_path, "rb") as file:
+        with open(state_file_path, "rb") as file:
             state = np.load(file, allow_pickle=True)["state"][()]
             config = state["config"]
             index = cls.from_config(FaissDenseIndexConfig(**config))
             index.key_mapping = state["key_mapping"]
 
         mmap_mode = "r" if mmap else None
-        with repository.open(index_file_path, "rb") as file:
+        with open(index_file_path, "rb") as file:
             stored = np.load(file, allow_pickle=True, mmap_mode=mmap_mode)
             index.faiss_index = faiss.deserialize_index(stored["index"])
 

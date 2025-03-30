@@ -19,7 +19,6 @@ if TYPE_CHECKING:
     from collections.abc import Generator
 
     from baguetter.types import Key, TextOrTokens
-    from baguetter.utils.file_repository import AbstractFileRepository
 
 
 class BaseSparseIndex(BaseIndex, abc.ABC):
@@ -162,7 +161,6 @@ class BaseSparseIndex(BaseIndex, abc.ABC):
     def _save(
         self,
         path: str,
-        repository: AbstractFileRepository,
     ) -> str:
         """Save the index to the given path.
 
@@ -177,7 +175,7 @@ class BaseSparseIndex(BaseIndex, abc.ABC):
             "corpus_tokens": self.corpus_tokens,
             "config": dataclasses.asdict(self.config),
         }
-        with repository.open(path, "wb") as f:
+        with open(path, "wb") as f:
             np.savez_compressed(f, state=state)
         return path
 
@@ -185,7 +183,6 @@ class BaseSparseIndex(BaseIndex, abc.ABC):
     def _load(
         cls,
         path: str,
-        repository: AbstractFileRepository,
         *,
         mmap: bool = False,
     ) -> BaseSparseIndex:
@@ -203,12 +200,12 @@ class BaseSparseIndex(BaseIndex, abc.ABC):
             FileNotFoundError: If the index file is not found.
 
         """
-        if not repository.exists(path):
+        if not os.path.exists(path):
             msg = f"Index {path} not found."
             raise FileNotFoundError(msg)
 
         mmap_mode = "r" if mmap else None
-        with repository.open(path, "rb") as f:
+        with open(path, "rb") as f:
             stored = np.load(f, allow_pickle=True, mmap_mode=mmap_mode)
             state = stored["state"][()]
             retriever = cls.from_config(SparseIndexConfig(**state["config"]))

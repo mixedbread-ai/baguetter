@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import math
 import tempfile
 from dataclasses import asdict
@@ -17,7 +18,6 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from baguetter.types import DTypeLike, Key, ScoringMetric, TextOrVector
-    from baguetter.utils.file_repository import AbstractFileRepository
 
 
 def get_normalization_fn(metric: MetricKind, embedding_dim: int) -> Callable[[np.ndarray], np.ndarray]:
@@ -141,7 +141,6 @@ class USearchDenseIndex(BaseDenseIndex, Index):
     def _save(
         self,
         path: str,
-        repository: AbstractFileRepository,
     ) -> str:
         """Save the index state and data.
 
@@ -161,12 +160,12 @@ class USearchDenseIndex(BaseDenseIndex, Index):
             index_file_path,
         ) = BaseDenseIndex.build_index_file_paths(path or self.name)
 
-        with repository.open(state_file_path, "wb") as file:
+        with open(state_file_path, "wb") as file:
             np.savez_compressed(file, state=state)
 
         with (
-            repository.open(index_file_path, "wb") as file,
-            tempfile.NamedTemporaryFile() as temp_file,
+            open(index_file_path, "wb") as file,
+            tempfile.NamedTemporaryFile(delete=False) as temp_file,
         ):
             Index.save(self, temp_file.name)
             file.write(temp_file.read())
@@ -178,7 +177,6 @@ class USearchDenseIndex(BaseDenseIndex, Index):
         cls,
         path: str,
         *,
-        repository: AbstractFileRepository,
         mmap: bool = False,
     ) -> USearchDenseIndex:
         """Load the index from saved state.
@@ -200,15 +198,15 @@ class USearchDenseIndex(BaseDenseIndex, Index):
             index_file_path,
         ) = BaseDenseIndex.build_index_file_paths(path)
 
-        if not repository.exists(state_file_path):
+        if not os.path.exists(state_file_path):
             msg = f"Index.state {state_file_path} not found in repository."
             raise FileNotFoundError(msg)
 
-        if not repository.exists(index_file_path):
+        if not os.path.exists(index_file_path):
             msg = f"Index.index {index_file_path} not found in repository."
             raise FileNotFoundError(msg)
 
-        with repository.open(state_file_path, "rb") as file:
+        with open(state_file_path, "rb") as file:
             state = np.load(file, allow_pickle=True)["state"][()]
             config = state["config"]
             index = cls.from_config(UsearchDenseIndexConfig(**config))
@@ -216,8 +214,8 @@ class USearchDenseIndex(BaseDenseIndex, Index):
             index.key_counter = state["id_count"]
 
         with (
-            repository.open(index_file_path, "rb") as file,
-            tempfile.NamedTemporaryFile(delete=not mmap) as temp,
+            open(index_file_path, "rb") as file,
+            tempfile.NamedTemporaryFile(delete=False) as temp,
         ):
             temp.write(file.read())
             temp.seek(0)

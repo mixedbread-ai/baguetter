@@ -6,7 +6,6 @@ import pytest
 
 from baguetter.indices.base import SearchResults
 from baguetter.indices.dense.faiss import FaissDenseIndex
-from baguetter.utils.file_repository import LocalFileRepository
 
 
 @pytest.fixture
@@ -100,10 +99,9 @@ def test_faiss_save_and_load(sample_data):
 
     with tempfile.TemporaryDirectory() as tmpdir:
         save_path = "faiss_index"
-        repo = LocalFileRepository(tmpdir)
-        index._save(repository=repo, path=save_path)
+        index._save(path=save_path)
 
-        loaded_index = FaissDenseIndex._load(save_path, repository=repo)
+        loaded_index = FaissDenseIndex._load(save_path)
 
         assert loaded_index.size == index.size
         assert loaded_index.config.__dict__ == index.config.__dict__

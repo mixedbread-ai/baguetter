@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+import os
 from abc import ABC, abstractmethod
 from typing import Any
 
-from baguetter.utils.file_repository import AbstractFileRepository, HuggingFaceFileRepository, LocalFileRepository
-
+from baguetter.utils.file_repository import HuggingFaceFileRepository
 
 class Persistable(ABC):
     """Abstract base class for objects that can be persisted to and loaded from storage.
@@ -18,7 +18,6 @@ class Persistable(ABC):
     def _load(
         cls,
         path: str,
-        repository: AbstractFileRepository,
         *,
         allow_pickle: bool = True,
         mmap: bool = False,
@@ -27,7 +26,6 @@ class Persistable(ABC):
 
         Args:
             path (str): Path of the object to load.
-            repository (AbstractFileRepository): File repository to load from.
             allow_pickle (bool, optional): Whether to allow loading pickled objects. Defaults to True.
             mmap (bool, optional): Whether to memory-map the file. Defaults to False.
 
@@ -37,12 +35,11 @@ class Persistable(ABC):
         """
 
     @abstractmethod
-    def _save(self, path: str, repository: AbstractFileRepository) -> str:
+    def _save(self, path: str) -> str:
         """Save the object to storage.
 
         Args:
             path (str): Path to save the object to.
-            repository (AbstractFileRepository): File repository to save to.
 
         Returns:
             str: Path to the saved object.
@@ -59,12 +56,8 @@ class Persistable(ABC):
             str: Path to the saved object.
 
         """
-        repository = LocalFileRepository()
-        directory = path.rsplit("/", 1)
-        if len(directory) > 1:
-            repository.mkdirs(directory[0], exist_ok=True)
-        path = self._save(path=path, repository=repository)
-        return repository.info(path)["name"]
+        path = self._save(path=path)
+        return os.path.basename(path)
 
     @classmethod
     def load(cls, path: str, *, mmap: bool = False) -> Any:
@@ -78,10 +71,8 @@ class Persistable(ABC):
             Any: The loaded object.
 
         """
-        repository = LocalFileRepository()
         return cls._load(
             path=path,
-            repository=repository,
             mmap=mmap,
         )
 

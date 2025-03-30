@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from fsspec import AbstractFileSystem
@@ -103,12 +104,13 @@ class LocalFileRepository(AbstractFileRepository, LocalFileSystem):
 
         """
         super().__init__(**kwargs)
-        self._base_path = str(Path(path or f"{settings.base_path}/repository").resolve())
-        if not self.isdir(self._base_path):
-            if self.exists(self._base_path):
-                msg = f"Path '{self._base_path}' exists but is not a directory."
+        base_path = str(Path(path or f"{settings.base_path}/repository").resolve())
+        if not os.path.isdir(base_path):
+            if os.path.exists(base_path):
+                msg = f"Path '{base_path}' exists but is not a directory."
                 raise ValueError(msg)
-            self.mkdir(self._base_path, parents=True, exist_ok=True)
+            os.makedirs(base_path, exist_ok=True)
+        self._base_path = base_path
 
     def _strip_protocol(self, path: str) -> str:
         """Strip the protocol from the given path.
